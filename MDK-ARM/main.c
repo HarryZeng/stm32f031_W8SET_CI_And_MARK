@@ -473,10 +473,11 @@ void DMA1_Channel1_IRQHandler()
 					SelfGetADCWell=1;
 					ADCIndex = 0;
 					DMAIndex=1;
+					sample_finish = 1;
 				}
 			}
 					
-				sample_finish = 1;
+				//sample_finish = 1;
     }  
     DMA_ClearITPendingBit(DMA_IT_TC);                   //清楚DMA中断标志位  
 }  

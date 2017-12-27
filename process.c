@@ -23,7 +23,8 @@ void 	GetRegisterAState(void);
 uint32_t 	Read_Value(PWM_Number PWM);
 uint8_t  	Read_KG(void);
 void  		SetOut(uint8_t OUT);
-void  		SelfLearning(void);
+void  CI_Mode_SelfLearning(void);
+void  MARK_Mode_SelfLearning(void);
 void 			scan_key(void);
 void 			printFlashTest(void);
 void ShortCircuitProtection(void);
@@ -59,6 +60,11 @@ uint8_t EnterSelfFlag=0;
 extern int16_t adc_dma_tab[6];
 extern uint8_t sample_finish;
 extern uint8_t TIM1step;
+
+/********************************/
+uint32_t CXA_B[2],CYA_B[2],CZA_B[2];
+uint32_t SA_B[2];
+
 /***********************************
 *FLASH 字节定义
 *0x12000032
@@ -122,7 +128,7 @@ void DataProcess(void)
 			//printf("first enter ,key time:%d\r\n",KeyTime);
 			OUTPin_STATE = GPIO_ReadInputDataBit(OUT_GPIO_Port,OUT_Pin); //读取OUT的值,用于写FLASH时，保持OUT的引脚电平不变
 			GPIO_WriteBit(OUT_GPIO_Port, OUT_Pin, (BitAction)OUTPin_STATE);
-			SelfLearning();
+			CI_Mode_SelfLearning();
 		}
 	}
 }
@@ -253,7 +259,8 @@ void  SetOut(uint8_t OUT_Value)
 	uint32_t temppp;
 	extern uint8_t DMAIndex;
 	extern int16_t selfADCValue[12];
-void  SelfLearning(void)
+	
+void  MARK_Mode_SelfLearning(void)
 {
 		uint8_t selfADCIndex=0;
 		uint8_t k=0;
@@ -270,15 +277,15 @@ void  SelfLearning(void)
 				SY[k] = selfADCValue[selfADCIndex++];
 				SZ[k] = selfADCValue[selfADCIndex++];	
 			}
-			SXA_B[KeyIndex] = (SX[0]+SX[1]+SX[2]+SX[3])/4;
+			SXA_B[KeyIndex] = (SX[0]+SX[1]+SX[2]+SX[3])/4; //累加求平均
 			SYA_B[KeyIndex] = (SY[0]+SY[1]+SY[2]+SY[3])/4;
 			SZA_B[KeyIndex] = (SZ[0]+SZ[1]+SZ[2]+SZ[3])/4;
 			
 			
 		}; /*等待获取四组ADC成功*/
 		
-		KeyIndex++;  //记录第几次按键
-		if(KeyIndex>=2) //第二次按键
+		KeyIndex++;  //记录第几次按键   1->SXA,2->SXB
+		if(KeyIndex>=2) //第二次按键   //
 		{
 			//printf("second enter ,key time:%d\r\n",KeyTime);
 				KeyIndex = 0;
@@ -341,6 +348,62 @@ void  SelfLearning(void)
 					EnterSelfFlag = 0;
 		}
 			KeyTime = 0; //清楚按键标记
+}
+
+/*MARK_Mode_SelfLearning*/
+uint32_t NXSET,NYSET,NZSET,NS_SET,NXYZ_SET;
+void CI_Mode_SelfLearning(void)
+{
+		uint8_t selfADCIndex=0;
+		uint8_t k=0;
+		EnterSelfFlag = 1; /*进入自学习标记位*/
+		DMAIndex=0;
+	
+		DelaymsSet(5000);
+		if(SelfGetADCWell)
+		{
+			SelfGetADCWell = 0;
+			for(selfADCIndex=0,k=0;k<4;k++)
+			{
+				SX[k] = selfADCValue[selfADCIndex++];
+				SY[k] = selfADCValue[selfADCIndex++];
+				SZ[k] = selfADCValue[selfADCIndex++];	
+			}
+			SXA_B[KeyIndex] = (SX[0]+SX[1]+SX[2]+SX[3])/4; //累加求平均
+			SYA_B[KeyIndex] = (SY[0]+SY[1]+SY[2]+SY[3])/4;
+			SZA_B[KeyIndex] = (SZ[0]+SZ[1]+SZ[2]+SZ[3])/4;
+	
+		}; /*等待获取四组ADC成功*/
+		
+		SA_B[KeyIndex]=SXA_B[KeyIndex]+SYA_B[KeyIndex]+SZA_B[KeyIndex];/*求得SA*/
+	
+		CXA_B[KeyIndex] = 1024*SXA_B[KeyIndex]/SA_B[KeyIndex];   //1->SXA,2->SXB
+		CYA_B[KeyIndex] = 1024*SYA_B[KeyIndex]/SA_B[KeyIndex];
+		CZA_B[KeyIndex] = 1024*SZA_B[KeyIndex]/SA_B[KeyIndex];
+				
+		KeyIndex++;  //记录第几次按键   1->SXA,2->SXB
+		
+		if(KeyIndex>=2) //第二次按键   //
+		{
+			//printf("second enter ,key time:%d\r\n",KeyTime);
+				KeyIndex = 0;
+				
+				NXSET =	CXA_B[1] - CXA_B[0];  /*NXSET=CXA-CXB的绝对值*/
+				NYSET = CYA_B[1] - CYA_B[0];
+			  NZSET = CZA_B[1] - CZA_B[0];
+				
+				NS_SET = SA_B[1] - SA_B[0];
+				
+				NXYZ_SET = NXSET+NYSET+NZSET;
+				
+				CurrentThreshold = 1000 - (NS_SET + NXYZ_SET);
+				
+//				WriteFlash(0,FLASHData);																	//保存FLASH
+//					//printf("Save Successfully\r\n");
+//				EnterSelfFlag = 0;
+		}
+			KeyTime = 0; //清楚按键标记
+		
 }
 
 
