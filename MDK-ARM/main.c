@@ -453,6 +453,7 @@ void TIM3_IRQHandler()
 
 
 extern uint8_t SelfGetADCWell;
+extern uint8_t FB_Flag;
 uint8_t ADCIndex=0;
 uint8_t DMAIndex=0;
 
@@ -465,18 +466,23 @@ void DMA1_Channel1_IRQHandler()
     if(DMA_GetITStatus(DMA_IT_TC))                      //判断DMA传输完成中断  
     {   
        //sample_1[sample_index] = (adc_dma_tab[0]*3300)/4096;
-			if(EnterSelfFlag&&(DMAIndex==0))
-			{
+			
 				selfADCValue[ADCIndex++] = adc_dma_tab[0];
+			
 				if(ADCIndex>=12)
 				{
-					SelfGetADCWell=1;
 					ADCIndex = 0;
-					DMAIndex=1;
-					sample_finish = 1;
-				}
-			}
+					if(EnterSelfFlag&&(DMAIndex==0))//自学习模式
+					{		
+							DMAIndex=1;
+							SelfGetADCWell=1;
+					}
+					else													//正常工作模式
+					{
+						sample_finish = 1; 
+					}
 					
+				}				
 				//sample_finish = 1;
     }  
     DMA_ClearITPendingBit(DMA_IT_TC);                   //清楚DMA中断标志位  

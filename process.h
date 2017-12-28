@@ -38,8 +38,8 @@
 #define PWMY_GPIO_Port 		GPIOA
 #define PWMZ_Pin 					GPIO_Pin_10
 #define PWMZ_GPIO_Port 		GPIOA
-#define SC_Pin 						GPIO_Pin_11
-#define SC_GPIO_Port 			GPIOA
+#define FB_Pin 						GPIO_Pin_11
+#define FB_GPIO_Port 			GPIOA
 #define OUT_Pin 					GPIO_Pin_12
 #define OUT_GPIO_Port 		GPIOA	 
 	 

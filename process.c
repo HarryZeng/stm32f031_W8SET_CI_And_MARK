@@ -42,7 +42,15 @@ uint8_t RegisterA ;
 uint8_t RegisterB ;
 uint8_t OUT;
 
+	uint32_t SX[4],SY[4],SZ[4];
+	float SXA_B[2],SYA_B[2],SZA_B[2];
 
+	float X=0,Y=0,Z=0,BIG=0;
+	uint32_t SelfLADC=0;
+	uint8_t SelfGetADCWell=0;
+	uint32_t temppp;
+	extern uint8_t DMAIndex;
+	extern int16_t selfADCValue[12];
 
 PWM_Number CurrentPWM = PWMX; //默认当前PWM通道为X
 uint32_t S_Last,S_Current,S_History,S_FINAL;
@@ -64,7 +72,14 @@ extern uint8_t TIM1step;
 /********************************/
 uint32_t CXA_B[2],CYA_B[2],CZA_B[2];
 uint32_t SA_B[2];
+uint8_t FB_Flag=0;
+uint32_t NXSET,NYSET,NZSET,NS_SET,NXYZ_SET;
 
+float SX_RUN,SY_RUN,SZ_RUN,S_RUN_TOTAL;
+uint32_t CX_RUN,CY_RUN,CZ_RUN,NS_RUN,NXYZ_RUN;
+uint32_t CX,CY,CZ;
+
+uint32_t SCI,SMARK;
 /***********************************
 *FLASH 字节定义
 *0x12000032
@@ -97,7 +112,7 @@ void DataProcess(void)
 	while(1)
 	{
 		/*短路保护判断*/
-		ShortCircuitProtection();
+		//ShortCircuitProtection();
 		
 		while(ConfirmShortCircuit)
 		{
@@ -128,7 +143,18 @@ void DataProcess(void)
 			//printf("first enter ,key time:%d\r\n",KeyTime);
 			OUTPin_STATE = GPIO_ReadInputDataBit(OUT_GPIO_Port,OUT_Pin); //读取OUT的值,用于写FLASH时，保持OUT的引脚电平不变
 			GPIO_WriteBit(OUT_GPIO_Port, OUT_Pin, (BitAction)OUTPin_STATE);
-			CI_Mode_SelfLearning();
+			
+			
+			if(GPIO_ReadInputDataBit(FB_GPIO_Port,FB_Pin))
+			{
+				CI_Mode_SelfLearning();  //CI MODE
+				FB_Flag = 1;
+			}
+			else
+			{
+				FB_Flag = 0;
+				MARK_Mode_SelfLearning();//MARK MODE
+			}
 		}
 	}
 }
@@ -168,6 +194,7 @@ void GetRegisterAState(void)
 *************************/
 uint32_t Read_Value(PWM_Number PWM)
 {
+	uint8_t GetADCIndex=0,k;
 	/*开启对应的PWM通道*/
 	switch (PWM)
 	{
@@ -191,8 +218,42 @@ uint32_t Read_Value(PWM_Number PWM)
 	if(sample_finish) /*DMA中断中，ADC转换完成标记*/
 	{
 		//ADC_value = (adc_dma_tab[0] * 825)>>10;
-		ADC_value = adc_dma_tab[0];
-		sample_finish = 0;
+//		ADC_value = adc_dma_tab[0];
+	
+		if(FB_Flag)  /*CI MODE*/
+		{
+			for(GetADCIndex=0,k=0;k<4;k++)
+			{
+				SX[k] = selfADCValue[GetADCIndex++];
+				SY[k] = selfADCValue[GetADCIndex++];
+				SZ[k] = selfADCValue[GetADCIndex++];	
+			}
+			SX_RUN = (SX[0]+SX[1]+SX[2]+SX[3])/4; //累加求平均
+			SY_RUN = (SY[0]+SY[1]+SY[2]+SY[3])/4;
+			SZ_RUN = (SZ[0]+SZ[1]+SZ[2]+SZ[3])/4;
+		
+			S_RUN_TOTAL = SX_RUN+SY_RUN+SZ_RUN;
+			
+			CX = 1024*SX_RUN/S_RUN_TOTAL;   //1->SXA,2->SXB
+			CY = 1024*SY_RUN/S_RUN_TOTAL;   //1->SXA,2->SXB
+			CZ = 1024*SZ_RUN/S_RUN_TOTAL;   //1->SXA,2->SXB
+			
+			
+			NS_RUN = S_RUN_TOTAL - SA_B[0];  /*NSR_RUN = S-SA 绝对值*/
+			CX_RUN =	CX - CXA_B[0];  /*CX_RUN=CX-CXB的绝对值*/
+			CY_RUN = 	CY - CYA_B[0];
+			CZ_RUN = 	CZ - CZA_B[0];
+			
+			NXYZ_RUN = CX_RUN+CY_RUN+CZ_RUN;
+			
+			SCI = 1000 - (NS_RUN + NXYZ_RUN);
+		}
+		else  /*MARK MODE*/
+		{
+			
+		}
+			
+			sample_finish = 0;
 	}
 	//printf("ADC_value : %d\r\n",ADC_value);
 	
@@ -251,14 +312,7 @@ void  SetOut(uint8_t OUT_Value)
 *自学习计算
 *
 **************************************/
-	uint32_t SX[4],SY[4],SZ[4];
-	float SXA_B[2],SYA_B[2],SZA_B[2];
-	float X=0,Y=0,Z=0,BIG=0;
-	uint32_t SelfLADC=0;
-	uint8_t SelfGetADCWell=0;
-	uint32_t temppp;
-	extern uint8_t DMAIndex;
-	extern int16_t selfADCValue[12];
+
 	
 void  MARK_Mode_SelfLearning(void)
 {
@@ -351,7 +405,7 @@ void  MARK_Mode_SelfLearning(void)
 }
 
 /*MARK_Mode_SelfLearning*/
-uint32_t NXSET,NYSET,NZSET,NS_SET,NXYZ_SET;
+
 void CI_Mode_SelfLearning(void)
 {
 		uint8_t selfADCIndex=0;
@@ -484,30 +538,30 @@ void printFlashTest(void)
 *******************************/
 void ShortCircuitProtection(void)
 {
-	uint8_t SCState;
-	
-	/*读取SC引脚的状态*/
-	if(ShortCircuit!=1)
-	{
-		SCState = GPIO_ReadInputDataBit(SC_GPIO_Port ,SC_Pin);
-		if(SCState == Bit_RESET)
-		{
-			/*拉低FB_SC*/
-			ShortCircuit= 1;
-		}
-		else
-		{
-			ShortCircuit = 0;
-			ConfirmShortCircuit = 0;
-		}
-	}
-	if(ShortCircuit && ShortCircuitCounter>=5)
-	{
-		ConfirmShortCircuit=1;
-		
-		GPIO_WriteBit(OUT_GPIO_Port, OUT_Pin, Bit_RESET);/*马上拉低OUT*/
-		ShortCircuitTimer = ShortCircuitLastTime;
-	}
+//	uint8_t SCState;
+//	
+//	/*读取SC引脚的状态*/
+//	if(ShortCircuit!=1)
+//	{
+//		SCState = GPIO_ReadInputDataBit(SC_GPIO_Port ,SC_Pin);
+//		if(SCState == Bit_RESET)
+//		{
+//			/*拉低FB_SC*/
+//			ShortCircuit= 1;
+//		}
+//		else
+//		{
+//			ShortCircuit = 0;
+//			ConfirmShortCircuit = 0;
+//		}
+//	}
+//	if(ShortCircuit && ShortCircuitCounter>=5)
+//	{
+//		ConfirmShortCircuit=1;
+//		
+//		GPIO_WriteBit(OUT_GPIO_Port, OUT_Pin, Bit_RESET);/*马上拉低OUT*/
+//		ShortCircuitTimer = ShortCircuitLastTime;
+//	}
 }
 
 ///**** Copyright (C)2017 HarryZeng. All Rights Reserved **** END OF FILE ****/

@@ -5,7 +5,7 @@
 .\objects\main.o: ..\Libraries\CMSIS\Include\core_cmInstr.h
 .\objects\main.o: ..\Libraries\CMSIS\Include\core_cmFunc.h
 .\objects\main.o: ..\Libraries\CMSIS\Device\ST\STM32F0xx\Include\system_stm32f0xx.h
-.\objects\main.o: ..\..\stm32f031_W8SET_StandardDriver_TIM1-master\stm32f0xx_conf.h
+.\objects\main.o: ..\..\stm32f031_W8SET_CI_And_MARK\stm32f0xx_conf.h
 .\objects\main.o: ..\Libraries\STM32F0xx_StdPeriph_Driver\inc\stm32f0xx_adc.h
 .\objects\main.o: ..\Libraries\CMSIS\Device\ST\STM32F0xx\Include\stm32f0xx.h
 .\objects\main.o: ..\Libraries\STM32F0xx_StdPeriph_Driver\inc\stm32f0xx_can.h
@@ -31,4 +31,4 @@
 .\objects\main.o: ..\Libraries\STM32F0xx_StdPeriph_Driver\inc\stm32f0xx_wwdg.h
 .\objects\main.o: ..\Libraries\STM32F0xx_StdPeriph_Driver\inc\stm32f0xx_misc.h
 .\objects\main.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
-.\objects\main.o: ..\..\stm32f031_W8SET_StandardDriver_TIM1-master\process.h
+.\objects\main.o: ..\..\stm32f031_W8SET_CI_And_MARK\process.h

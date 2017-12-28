@@ -5,7 +5,7 @@
 .\objects\system_stm32f0xx.o: ..\Libraries\CMSIS\Include\core_cmInstr.h
 .\objects\system_stm32f0xx.o: ..\Libraries\CMSIS\Include\core_cmFunc.h
 .\objects\system_stm32f0xx.o: ..\Libraries\CMSIS\Device\ST\STM32F0xx\Include\system_stm32f0xx.h
-.\objects\system_stm32f0xx.o: ..\..\stm32f031_W8SET_StandardDriver_TIM1-master\stm32f0xx_conf.h
+.\objects\system_stm32f0xx.o: ..\..\stm32f031_W8SET_CI_And_MARK\stm32f0xx_conf.h
 .\objects\system_stm32f0xx.o: ..\Libraries\STM32F0xx_StdPeriph_Driver\inc\stm32f0xx_adc.h
 .\objects\system_stm32f0xx.o: ..\Libraries\CMSIS\Device\ST\STM32F0xx\Include\stm32f0xx.h
 .\objects\system_stm32f0xx.o: ..\Libraries\STM32F0xx_StdPeriph_Driver\inc\stm32f0xx_can.h
