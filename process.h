@@ -28,8 +28,8 @@
 #define ADC_IN_GPIO_Port 	GPIOA
 #define PWM1_Pin 					GPIO_Pin_2
 #define PWM1_GPIO_Port 		GPIOA
-#define KG_Pin 						GPIO_Pin_3
-#define KG_GPIO_Port 			GPIOA
+#define GOODBAD_Pin 			GPIO_Pin_3
+#define GOODBAD_GPIO_Port GPIOA
 #define SET_Pin 					GPIO_Pin_4
 #define SET_GPIO_Port 		GPIOA
 #define PWMX_Pin 					GPIO_Pin_8
@@ -50,9 +50,9 @@
 
 #define Default_Difference  80
 
-#define PWM1_HIGH  	12
+#define PWM1_HIGH  	176
 #define PWM1_LOW  	0
-#define PWMx_HIGH  	5
+#define PWMx_HIGH  	1
 #define PWMx_LOW  	0
 
 

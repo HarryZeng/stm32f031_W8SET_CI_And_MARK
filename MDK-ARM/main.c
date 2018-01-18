@@ -23,8 +23,6 @@
 //  {
 //    GPIOx->BRR = GPIO_Pin ;
 //  }
-
-#define _Gpio_12_set  GPIO_WriteBit(GPIOA, GPIO_Pin_12, (BitAction)!GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_12))
 #define _Gpio_7_set  GPIO_WriteBit(GPIOA, GPIO_Pin_7, (BitAction)!GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_7))
 
 uint8_t sample_finish = 0;  
@@ -47,6 +45,7 @@ extern uint16_t scan_tick;
 extern uint8_t EnterSelfFlag;
 extern uint8_t 	ShortCircuitCounter;
 extern uint8_t 	ShortCircuit;
+extern uint8_t FB_Flag;
 void adc_config(void) ;
 void user_adc_init(void)  ;
 void adc_gpio_init(void);
@@ -145,8 +144,8 @@ void adc_config()
   
     adc_init_structure.ADC_ContinuousConvMode = DISABLE;            //????????  
     adc_init_structure.ADC_DataAlign = ADC_DataAlign_Right;         //???????  
-    adc_init_structure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T2_TRGO; //???????TIM2  
-    adc_init_structure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_Rising;//?????  
+    //adc_init_structure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_TRGO; //???????TIM1
+    //adc_init_structure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_RisingFalling;//?????  
     adc_init_structure.ADC_Resolution = ADC_Resolution_12b;         //12????  
     adc_init_structure.ADC_ScanDirection = ADC_ScanDirection_Upward;//????0-18??  
 		
@@ -160,7 +159,7 @@ void adc_config()
   
     ADC_DMACmd(ADC1, ENABLE);                                       //??ADC_DMA  
     ADC_DMARequestModeConfig(ADC1, ADC_DMAMode_Circular);           //??DMA?????????  
-    ADC_StartOfConversion(ADC1);                                    //??????(??)  
+    //ADC_StartOfConversion(ADC1);                                    //??????(??)  
 }  
   
 void adc_gpio_init()  
@@ -263,8 +262,8 @@ void adc_timer_init()
   
     timer_init_structure.TIM_ClockDivision = TIM_CKD_DIV1;          //系统时钟,不分频,24M  
     timer_init_structure.TIM_CounterMode = TIM_CounterMode_Up;      //向上计数模式  
-    timer_init_structure.TIM_Period = 2000;                          //每300 uS触发一次中断,??ADC  
-    timer_init_structure.TIM_Prescaler = 15;                      //计数时钟分频,f=1M,systick=1 uS  
+    timer_init_structure.TIM_Period = 1000;                          //每1000 uS触发一次中断,??ADC  
+    timer_init_structure.TIM_Prescaler = 47;                      //计数时钟分频,f=1M,systick=1 uS  
     timer_init_structure.TIM_RepetitionCounter = 0x00;              //发生0+1的update事件产生中断 
 		
     TIM_TimeBaseInit(TIM3, &timer_init_structure);  
@@ -276,8 +275,8 @@ void adc_timer_init()
     TIM_TimeBaseStructInit(&timer_init_structure);                  //初始化TIM结构体  
   
     timer_init_structure.TIM_CounterMode = TIM_CounterMode_Up;      //向上计数模式  
-    timer_init_structure.TIM_Period = 120;                          //每300 uS触发一次中断,??ADC  
-    timer_init_structure.TIM_Prescaler = 7;                      //计数时钟分频,f=1M,systick=1 uS  
+    timer_init_structure.TIM_Period = 960;                          //每43 uS触发一次中断,??ADC  
+    timer_init_structure.TIM_Prescaler = 5;                      //计数时钟分频,f=1M,systick=1 uS  
     timer_init_structure.TIM_RepetitionCounter = 0;              //发生0+1的update事件产生中断 
 		
     TIM_TimeBaseInit(TIM2, &timer_init_structure);  
@@ -286,18 +285,16 @@ void adc_timer_init()
 		timer_OCinit_structure.TIM_OutputState = TIM_OutputState_Enable;
 		timer_OCinit_structure.TIM_Pulse = PWM1_HIGH;
 		timer_OCinit_structure.TIM_OCPolarity = TIM_OCPolarity_High;
-		
-		
+
 		TIM_OC3Init(TIM2,&timer_OCinit_structure);
 		TIM_OC3PreloadConfig(TIM2,TIM_OCPreload_Enable);
 		TIM_ARRPreloadConfig(TIM2,ENABLE);
 		
-		
     TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);                      //使能TIM2中断
 		TIM_SelectOutputTrigger(TIM2, TIM_TRGOSource_Update);           //选择TIM1的update为触发源  
-		TIM_SelectInputTrigger(TIM2, TIM_TS_ITR0);
-		TIM_SelectSlaveMode(TIM2, TIM_SlaveMode_Gated);//触发模式只启动，门控制启停都可以控制
-		TIM_SelectMasterSlaveMode(TIM2, TIM_MasterSlaveMode_Enable);//主从模式MSM
+		//TIM_SelectInputTrigger(TIM2, TIM_TS_ITR0);
+		//TIM_SelectSlaveMode(TIM2, TIM_SlaveMode_Gated);//触发模式只启动，门控制启停都可以控制
+		//TIM_SelectMasterSlaveMode(TIM2, TIM_MasterSlaveMode_Enable);//主从模式MSM
 
 		TIM_Cmd(TIM2, ENABLE);
 
@@ -325,9 +322,9 @@ void adc_timer_init()
   
   
   /* Time ??????*/
-  timer_init_structure.TIM_Prescaler = 7;
+  timer_init_structure.TIM_Prescaler = 5;  //48/6=8 ,8M->0.125us
   timer_init_structure.TIM_CounterMode = TIM_CounterMode_Up;  /* Time ????????????*/
-  timer_init_structure.TIM_Period = 120;
+  timer_init_structure.TIM_Period = 960;   // 960->120us  
   timer_init_structure.TIM_RepetitionCounter = 0;
 
   TIM_TimeBaseInit(TIM1, &timer_init_structure);
@@ -341,28 +338,33 @@ void adc_timer_init()
   timer_OCinit_structure.TIM_OCIdleState = TIM_OCIdleState_Set;
   timer_OCinit_structure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
 
-  timer_OCinit_structure.TIM_Pulse = 3; //?????
+  timer_OCinit_structure.TIM_Pulse = 12; //?????
   TIM_OC1Init(TIM1, &timer_OCinit_structure);//????1??
 	TIM_OC1PreloadConfig(TIM1,TIM_OCPreload_Enable);
 	
-	timer_OCinit_structure.TIM_Pulse = 3; //?????
+	timer_OCinit_structure.TIM_Pulse = 12; //?????
   TIM_OC2Init(TIM1, &timer_OCinit_structure);//????1??
 	TIM_OC2PreloadConfig(TIM1,TIM_OCPreload_Enable);
 	
-	timer_OCinit_structure.TIM_Pulse = 3; //?????
+	timer_OCinit_structure.TIM_Pulse = 12; //?????
   TIM_OC3Init(TIM1, &timer_OCinit_structure);//????1??
 	TIM_OC3PreloadConfig(TIM1,TIM_OCPreload_Enable);
 
   TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);                      //使能TIM1中断
+	 TIM_ITConfig(TIM1, TIM_IT_CC1, ENABLE);                      //使能TIM1中断
+	  TIM_ITConfig(TIM1, TIM_IT_CC2, ENABLE);                      //使能TIM1中断
+		 TIM_ITConfig(TIM1, TIM_IT_CC3, ENABLE);                      //使能TIM1中断
+	
 	TIM_ARRPreloadConfig(TIM1,ENABLE);
 	
   /* TIM1 ?????*/
-	TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Enable);							//选择TIM1的timer为触发源  
-	//TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_OC1Ref);							//选择TIM1的timer为触发源  
+	//TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Update);							//选择TIM1的timer为触发源  
+	TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_OC1Ref);							//选择TIM1的timer为触发源  
 	//TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_OC2Ref);							//选择TIM1的timer为触发源  
 	//TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_OC3Ref);							//选择TIM1的timer为触发源  
+	//TIM_SelectSlaveMode(TIM1, TIM_SlaveMode_Gated);//触发模式只启动，门控制启停都可以控制
 	TIM_ClearITPendingBit(TIM1, TIM_IT_Update);     //清除update事件中断标志
-	TIM_SelectMasterSlaveMode(TIM1, TIM_MasterSlaveMode_Enable);//主从模式MSM  
+	//TIM_SelectMasterSlaveMode(TIM1, TIM_MasterSlaveMode_Enable);//主从模式MSM  
 	TIM_CtrlPWMOutputs(TIM1, ENABLE);
 	//TIM_SelectOnePulseMode(TIM1,TIM_OPMode_Single);
 	
@@ -396,6 +398,7 @@ void TIM2_IRQHandler()
     if(TIM_GetITStatus(TIM2, TIM_FLAG_Update))            //判断发生update事件中断  
     {  
 				//_Gpio_7_set;
+				TIM_SetCounter(TIM14,0x00);
         TIM_ClearITPendingBit(TIM2, TIM_FLAG_Update);     //清除update事件中断标志
     }  
 }  
@@ -409,40 +412,62 @@ void TIM1_BRK_UP_TRG_COM_IRQHandler()
 				else
 					ShortCircuitCounter=0;
 				
-				if(EnterSelfFlag)
+				if(EnterSelfFlag||FB_Flag)
 				{
-					TIM1step++;
-					if(TIM1step==1)
-					{
-						PWMX_ON;
-						PWMY_OFF;
-						PWMZ_OFF;
-					}
-					else if(TIM1step==2)
-					{
-						PWMX_OFF;
-						PWMY_ON;
-						PWMZ_OFF;
-					}
-					else if(TIM1step==3)
-					{
-						PWMX_OFF;
-						PWMY_OFF;
-						PWMZ_ON;
-					}
+//					TIM1step++;
+//					if(TIM1step==1)
+//					{
+//						PWMX_ON;
+//						PWMY_OFF;
+//						PWMZ_OFF;
+//						
+//					}
+//					else if(TIM1step==2)
+//					{
+//						PWMX_OFF;
+//						PWMY_ON;
+//						PWMZ_OFF;
+//						
+//					}
+//					else if(TIM1step==3)
+//					{
+//						PWMX_OFF;
+//						PWMY_OFF;
+//						PWMZ_ON;
+//						TIM1step = 0;
+//					}
+//					ADC_StartOfConversion(ADC1);
 				}
       TIM_ClearITPendingBit(TIM1, TIM_FLAG_Update);     //清除update事件中断标志
-    }  
+    }
+		if(TIM_GetITStatus(TIM1, TIM_FLAG_CC1))
+		{
+			ADC_StartOfConversion(ADC1);
+			TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC1);     //清除update事件中断标志
+		}
+		if(TIM_GetITStatus(TIM1, TIM_FLAG_CC2))
+		{
+			//ADC_StartOfConversion(ADC1);
+			TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC2);     //清除update事件中断标志
+		}
+		if(TIM_GetITStatus(TIM1, TIM_FLAG_CC3))
+		{
+			//ADC_StartOfConversion(ADC1);
+			TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC3);     //清除update事件中断标志
+		}
 } 
+
+
 
 extern uint32_t   ShortCircuitLastTime;
 void TIM3_IRQHandler()
 {
 	  if(TIM_GetITStatus(TIM3, TIM_IT_Update))            //判断发生update事件中断  
     { 
+			
 			scan_tick++;
 			ShortCircuitLastTime++;
-			if(scan_tick>=20)  /*20ms*/
+			if(scan_tick>=15)  /*15ms*/
 			{
 				scan_tick = 0;
 				scan_key();
@@ -452,41 +477,73 @@ void TIM3_IRQHandler()
 }
 
 
+int16_t  RunTime = 0; 
+
 extern uint8_t SelfGetADCWell;
 extern uint8_t FB_Flag;
 uint8_t ADCIndex=0;
 uint8_t DMAIndex=0;
-
 int16_t selfADCValue[12];
-
 void DMA1_Channel1_IRQHandler()  
 {  
-//		if(DMA_GetITStatus(DMA_IT_HT))
-//				;
     if(DMA_GetITStatus(DMA_IT_TC))                      //判断DMA传输完成中断  
     {   
-       //sample_1[sample_index] = (adc_dma_tab[0]*3300)/4096;
 			
-				selfADCValue[ADCIndex++] = adc_dma_tab[0];
-			
-				if(ADCIndex>=12)
+				selfADCValue[ADCIndex++] = 4095 - adc_dma_tab[0];
+				//_Gpio_7_set;
+				if(ADCIndex>=12)   //X,Y,Z三组，四个，==12个
 				{
 					ADCIndex = 0;
 					if(EnterSelfFlag&&(DMAIndex==0))//自学习模式
-					{		
+					{
 							DMAIndex=1;
 							SelfGetADCWell=1;
 					}
 					else													//正常工作模式
 					{
-						sample_finish = 1; 
+						sample_finish = 1;
+						//RunTime = TIM_GetCounter(TIM14);
 					}
-					
-				}				
-				//sample_finish = 1;
+				}
     }  
     DMA_ClearITPendingBit(DMA_IT_TC);                   //清楚DMA中断标志位  
 }  
+
+void TIM14_IRQHandler()
+{
+	  if(TIM_GetITStatus(TIM14, TIM_IT_Update))            //判断发生update事件中断  
+    { 
+			//_Gpio_7_set;
+			TIM_ClearITPendingBit(TIM14, TIM_IT_Update);     //清除update事件中断标志
+		}
+}
+/***********************/
+void TIM16_Config(void)
+{
+    TIM_TimeBaseInitTypeDef timer_init_structure;  
+		NVIC_InitTypeDef nvic_init_structure;  	
+	
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
+		/*TIM14*/
+		TIM_DeInit(TIM14);                                               //复位TIM14
+
+		nvic_init_structure.NVIC_IRQChannel = TIM14_IRQn;                //使能TIM14中断通道  
+    nvic_init_structure.NVIC_IRQChannelCmd = ENABLE;                //使能TIM14中断  
+    nvic_init_structure.NVIC_IRQChannelPriority = 6;                //优先级为4
+    NVIC_Init(&nvic_init_structure); 	
+
+    TIM_TimeBaseStructInit(&timer_init_structure);                  //初始化TIM结构体  
+  
+    timer_init_structure.TIM_ClockDivision = TIM_CKD_DIV1;          //系统时钟,不分频,24M  
+    timer_init_structure.TIM_CounterMode = TIM_CounterMode_Up;      //向上计数模式  
+    timer_init_structure.TIM_Period = 1000;                          //每300 uS触发一次中断,??ADC  
+    timer_init_structure.TIM_Prescaler = 47;                      //计数时钟分频,f=1M,systick=1 uS  
+    timer_init_structure.TIM_RepetitionCounter = 0x00;              //发生0+1的update事件产生中断 
+		
+    TIM_TimeBaseInit(TIM14, &timer_init_structure);  
+		TIM_ITConfig(TIM14, TIM_IT_Update, ENABLE);                      //使能TIM14中断
+    TIM_Cmd(TIM14, ENABLE);                                          //使能TIM14
+}
 
 
 void GPIO_INIT(void)
@@ -494,29 +551,35 @@ void GPIO_INIT(void)
 	
 	    GPIO_InitTypeDef gpio_init_structure;  
     //??GPIO??  
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);  
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA|RCC_AHBPeriph_GPIOB|RCC_AHBPeriph_GPIOF, ENABLE);  
   
     GPIO_StructInit(&gpio_init_structure);  
-    //GPIOA                                                         //PA-0~3??ADC  
-    gpio_init_structure.GPIO_Pin = GPIO_Pin_12;  
+                                                        //PA-0~3??ADC  
+    gpio_init_structure.GPIO_Pin = OUT_Pin;  
     gpio_init_structure.GPIO_Mode = GPIO_Mode_OUT;                   //????(??)??  
     gpio_init_structure.GPIO_OType = GPIO_OType_PP;                 //????  
     gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
     gpio_init_structure.GPIO_PuPd= GPIO_PuPd_NOPULL;                    //??  
-    GPIO_Init(GPIOA, &gpio_init_structure);  
+    GPIO_Init(OUT_GPIO_Port, &gpio_init_structure);  
 	
-		gpio_init_structure.GPIO_Pin = GPIO_Pin_4; 
+		gpio_init_structure.GPIO_Pin = FB_Pin;
 		gpio_init_structure.GPIO_Mode = GPIO_Mode_IN;                   //????(??)??  
     gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
 		gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??
-    GPIO_Init(GPIOA, &gpio_init_structure);  
+    GPIO_Init(FB_GPIO_Port, &gpio_init_structure);  
 	
-	    //GPIOA                                                         //PA-0~3??ADC  
-    gpio_init_structure.GPIO_Pin = GPIO_Pin_3|GPIO_Pin_11;  
-    gpio_init_structure.GPIO_Mode = GPIO_Mode_IN;                   //????(??)??  
+		gpio_init_structure.GPIO_Pin = GOODBAD_Pin;
+		gpio_init_structure.GPIO_Mode = GPIO_Mode_IN;                   //????(??)??  
     gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
-    gpio_init_structure.GPIO_PuPd= GPIO_PuPd_NOPULL;                    //??  
-    GPIO_Init(GPIOA, &gpio_init_structure);
+		gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??
+    GPIO_Init(GOODBAD_GPIO_Port, &gpio_init_structure);  
+	
+		gpio_init_structure.GPIO_Pin = SET_Pin;
+		gpio_init_structure.GPIO_Mode = GPIO_Mode_IN;                   //????(??)??  
+    gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
+		gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??
+    GPIO_Init(SET_GPIO_Port, &gpio_init_structure);  
+
 }
 
 void GPIO_DEINIT_ALL(void)
@@ -528,34 +591,34 @@ void GPIO_DEINIT_ALL(void)
   
     GPIO_StructInit(&gpio_init_structure);  
                                                         //PA-0~3??ADC  
-    gpio_init_structure.GPIO_Pin = GPIO_Pin_1|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7;  
+    gpio_init_structure.GPIO_Pin = GPIO_Pin_7;  
     gpio_init_structure.GPIO_Mode = GPIO_Mode_OUT;                   //????(??)??  
     gpio_init_structure.GPIO_OType = GPIO_OType_PP;                 //????  
     gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
     gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??  
     GPIO_Init(GPIOA, &gpio_init_structure); 
 	
-    gpio_init_structure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8;  
-    gpio_init_structure.GPIO_Mode = GPIO_Mode_OUT;                   //????(??)??  
-    gpio_init_structure.GPIO_OType = GPIO_OType_PP;                 //????  
-    gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
-    gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??  
-    GPIO_Init(GPIOB, &gpio_init_structure);  
+//    gpio_init_structure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1|GPIO_Pin_2|GPIO_Pin_3|GPIO_Pin_4|GPIO_Pin_5|GPIO_Pin_6|GPIO_Pin_7|GPIO_Pin_8;  
+//    gpio_init_structure.GPIO_Mode = GPIO_Mode_OUT;                   //????(??)??  
+//    gpio_init_structure.GPIO_OType = GPIO_OType_PP;                 //????  
+//    gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
+//    gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??  
+//    GPIO_Init(GPIOB, &gpio_init_structure);  
 
-    gpio_init_structure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1;  
-    gpio_init_structure.GPIO_Mode = GPIO_Mode_OUT;                   //????(??)??  
-    gpio_init_structure.GPIO_OType = GPIO_OType_PP;                 //????  
-    gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
-    gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??  
-    GPIO_Init(GPIOF, &gpio_init_structure); 
+//    gpio_init_structure.GPIO_Pin = GPIO_Pin_0|GPIO_Pin_1;  
+//    gpio_init_structure.GPIO_Mode = GPIO_Mode_OUT;                   //????(??)??  
+//    gpio_init_structure.GPIO_OType = GPIO_OType_PP;                 //????  
+//    gpio_init_structure.GPIO_Speed = GPIO_Speed_2MHz;              //Fast speed  
+//    gpio_init_structure.GPIO_PuPd= GPIO_PuPd_DOWN;                    //??  
+//    GPIO_Init(GPIOF, &gpio_init_structure); 
 }
 
 
 void RCC_Configuration(void)
 {
-	RCC_PLLConfig(RCC_PLLSource_HSI_Div2,RCC_PLLMul_4);
+	RCC_PLLConfig(RCC_PLLSource_HSI,RCC_PLLMul_12);
 	RCC_PLLCmd(ENABLE);
-	RCC_ADCCLKConfig(RCC_ADCCLK_PCLK_Div2);
+	RCC_ADCCLKConfig(RCC_ADCCLK_PCLK_Div4);
 	while(RCC_GetFlagStatus(RCC_FLAG_PLLRDY)==RESET)
 	{
 		
@@ -584,11 +647,10 @@ int main(void)
 	GPIO_INIT();
 	user_adc_init();
 	RCC_GetClocksFreq(&SysClock);
+	TIM16_Config();
 	DelaymsSet(5000); 
 	
 	DataProcess();
-	//while(1){}
-
 }
 
 
