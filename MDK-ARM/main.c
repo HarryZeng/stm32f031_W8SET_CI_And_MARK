@@ -28,7 +28,7 @@
 uint8_t sample_finish = 0;  
 int16_t adc_dma_tab[6] = { 0 };  
 uint8_t sample_index = 0;  
-uint8_t TIM1step=0;
+uint8_t PWM_Step=0;
 
 //?????  
 int16_t sample_1[128] = { 0 };  
@@ -245,7 +245,7 @@ void adc_timer_init()
 		
 		nvic_init_structure.NVIC_IRQChannel = TIM2_IRQn;                //使能TIM2中断通道  
     nvic_init_structure.NVIC_IRQChannelCmd = ENABLE;                //使能TIM2中断  
-    nvic_init_structure.NVIC_IRQChannelPriority = 0;                //优先级为0  
+    nvic_init_structure.NVIC_IRQChannelPriority = 6;                //优先级为0  
 		
     NVIC_Init(&nvic_init_structure); 
 		
@@ -324,7 +324,7 @@ void adc_timer_init()
   /* Time ??????*/
   timer_init_structure.TIM_Prescaler = 5;  //48/6=8 ,8M->0.125us
   timer_init_structure.TIM_CounterMode = TIM_CounterMode_Up;  /* Time ????????????*/
-  timer_init_structure.TIM_Period = 960;   // 960->120us  
+  timer_init_structure.TIM_Period = 640;   // 640->80us  
   timer_init_structure.TIM_RepetitionCounter = 0;
 
   TIM_TimeBaseInit(TIM1, &timer_init_structure);
@@ -338,17 +338,17 @@ void adc_timer_init()
   timer_OCinit_structure.TIM_OCIdleState = TIM_OCIdleState_Set;
   timer_OCinit_structure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
 
-  timer_OCinit_structure.TIM_Pulse = 12; //?????
+  timer_OCinit_structure.TIM_Pulse = PWMx_HIGH; //?????
   TIM_OC1Init(TIM1, &timer_OCinit_structure);//????1??
-	TIM_OC1PreloadConfig(TIM1,TIM_OCPreload_Enable);
+	TIM_OC1PreloadConfig(TIM1,TIM_OCPreload_Disable);
 	
-	timer_OCinit_structure.TIM_Pulse = 12; //?????
+	timer_OCinit_structure.TIM_Pulse = PWMy_HIGH; //?????
   TIM_OC2Init(TIM1, &timer_OCinit_structure);//????1??
-	TIM_OC2PreloadConfig(TIM1,TIM_OCPreload_Enable);
+	TIM_OC2PreloadConfig(TIM1,TIM_OCPreload_Disable);
 	
-	timer_OCinit_structure.TIM_Pulse = 12; //?????
+	timer_OCinit_structure.TIM_Pulse = PWMz_HIGH; //?????
   TIM_OC3Init(TIM1, &timer_OCinit_structure);//????1??
-	TIM_OC3PreloadConfig(TIM1,TIM_OCPreload_Enable);
+	TIM_OC3PreloadConfig(TIM1,TIM_OCPreload_Disable);
 
   TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);                      //使能TIM1中断
 	 TIM_ITConfig(TIM1, TIM_IT_CC1, ENABLE);                      //使能TIM1中断
@@ -392,68 +392,61 @@ void adc_timer_init()
 
     
 /****************************??????****************************/  
-
+uint8_t PWM_Start_Flag = 0;
+uint8_t PWM_Start_Counter = 0;
 void TIM2_IRQHandler()  
 {  
     if(TIM_GetITStatus(TIM2, TIM_FLAG_Update))            //判断发生update事件中断  
     {  
 				//_Gpio_7_set;
-				TIM_SetCounter(TIM14,0x00);
-        TIM_ClearITPendingBit(TIM2, TIM_FLAG_Update);     //清除update事件中断标志
+			if(PWM_Step==0)
+			{
+				PWMX_ON;
+				PWMY_OFF;
+				PWMZ_OFF;
+				//TIM_SetCompare1(TIM1, PWMx_HIGH);
+				PWM_Start_Flag = 1;
+				PWM_Step++;
+			}
+        TIM_ClearFlag(TIM2, TIM_FLAG_Update);     //清除update事件中断标志
     }  
 }  
-
+int16_t captureX=0,captureY=0,captureZ=0;
 void TIM1_BRK_UP_TRG_COM_IRQHandler()  
 {  
-    if(TIM_GetITStatus(TIM1, TIM_FLAG_Update))            //判断发生update事件中断  
+    if(TIM_GetITStatus(TIM1, TIM_FLAG_Update)==SET)            //判断发生update事件中断  
     {
-				if(ShortCircuit)
-					ShortCircuitCounter++;
-				else
-					ShortCircuitCounter=0;
-				
-				if(EnterSelfFlag||FB_Flag)
-				{
-//					TIM1step++;
-//					if(TIM1step==1)
-//					{
-//						PWMX_ON;
-//						PWMY_OFF;
-//						PWMZ_OFF;
-//						
-//					}
-//					else if(TIM1step==2)
-//					{
-//						PWMX_OFF;
-//						PWMY_ON;
-//						PWMZ_OFF;
-//						
-//					}
-//					else if(TIM1step==3)
-//					{
-//						PWMX_OFF;
-//						PWMY_OFF;
-//						PWMZ_ON;
-//						TIM1step = 0;
-//					}
-//					ADC_StartOfConversion(ADC1);
-				}
-      TIM_ClearITPendingBit(TIM1, TIM_FLAG_Update);     //清除update事件中断标志
+      TIM_ClearFlag(TIM1, TIM_FLAG_Update);     //清除update事件中断标志
     }
-		if(TIM_GetITStatus(TIM1, TIM_FLAG_CC1))
+		if(TIM_GetITStatus(TIM1, TIM_IT_CC1) != RESET)
 		{
-			ADC_StartOfConversion(ADC1);
-			TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC1);     //清除update事件中断标志
+			TIM_ClearFlag(TIM1, TIM_IT_CC1 ); //清除update事件中断标志
+			captureX = TIM_GetCapture1(TIM1);
+			if(captureX==PWMx_HIGH)
+			{
+				ADC_StartOfConversion(ADC1); 
+				//TIM_SetCompare1(TIM1, PWMx_HIGH);				
+			}				
 		}
-		if(TIM_GetITStatus(TIM1, TIM_FLAG_CC2))
+		if(TIM_GetITStatus(TIM1, TIM_IT_CC2) != RESET)
 		{
-			//ADC_StartOfConversion(ADC1);
-			TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC2);     //清除update事件中断标志
+			TIM_ClearFlag(TIM1, TIM_FLAG_CC2);     //清除update事件中断标志
+			captureY = TIM_GetCapture2(TIM1);
+			if(captureY==PWMy_HIGH)
+			{
+				ADC_StartOfConversion(ADC1); 
+				//TIM_SetCompare2(TIM1, PWMy_HIGH);	
+			}
 		}
-		if(TIM_GetITStatus(TIM1, TIM_FLAG_CC3))
+		if(TIM_GetITStatus(TIM1, TIM_IT_CC3) != RESET)
 		{
-			//ADC_StartOfConversion(ADC1);
-			TIM_ClearITPendingBit(TIM1, TIM_FLAG_CC3);     //清除update事件中断标志
+			TIM_ClearFlag(TIM1, TIM_FLAG_CC3);     //清除update事件中断标志
+			captureZ = TIM_GetCapture3(TIM1);
+			if(captureZ==PWMz_HIGH)
+			{
+				ADC_StartOfConversion(ADC1); 
+				//TIM_SetCompare3(TIM1, PWMz_HIGH);	
+			}
 		}
 } 
 
@@ -464,7 +457,6 @@ void TIM3_IRQHandler()
 {
 	  if(TIM_GetITStatus(TIM3, TIM_IT_Update))            //判断发生update事件中断  
     { 
-			
 			scan_tick++;
 			ShortCircuitLastTime++;
 			if(scan_tick>=15)  /*15ms*/
@@ -488,23 +480,44 @@ void DMA1_Channel1_IRQHandler()
 {  
     if(DMA_GetITStatus(DMA_IT_TC))                      //判断DMA传输完成中断  
     {   
-			
-				selfADCValue[ADCIndex++] = 4095 - adc_dma_tab[0];
-				//_Gpio_7_set;
-				if(ADCIndex>=12)   //X,Y,Z三组，四个，==12个
+			if(PWM_Step==3)
+					PWM_Step  = 0;
+			selfADCValue[ADCIndex++] = 4095 - adc_dma_tab[0];
+			//_Gpio_7_set;
+			if(ADCIndex>=12)   //X,Y,Z三组，四个，==12个    /*需要采集完4组才计算？？？？，要480us*/
+			{
+				ADCIndex = 0;
+				if(EnterSelfFlag&&(DMAIndex==0))//自学习模式
 				{
-					ADCIndex = 0;
-					if(EnterSelfFlag&&(DMAIndex==0))//自学习模式
-					{
-							DMAIndex=1;
-							SelfGetADCWell=1;
-					}
-					else													//正常工作模式
-					{
-						sample_finish = 1;
-						//RunTime = TIM_GetCounter(TIM14);
-					}
+						DMAIndex=1;
+						SelfGetADCWell=1;
 				}
+				else													//正常工作模式
+				{
+					sample_finish = 1;
+					//RunTime = TIM_GetCounter(TIM14);
+				}
+			}
+
+			if(PWM_Start_Flag==1)
+			{
+				if(PWM_Step==1)
+				{
+					PWMX_OFF;
+					PWMY_ON;
+					PWMZ_OFF;
+					PWM_Step++;
+				}
+				else if(PWM_Step==2)
+				{
+					PWM_Step++;
+					PWMX_OFF;
+					PWMY_OFF;
+					PWMZ_ON;
+					//
+					PWM_Start_Flag = 0;
+				}
+			}
     }  
     DMA_ClearITPendingBit(DMA_IT_TC);                   //清楚DMA中断标志位  
 }  
@@ -513,7 +526,24 @@ void TIM14_IRQHandler()
 {
 	  if(TIM_GetITStatus(TIM14, TIM_IT_Update))            //判断发生update事件中断  
     { 
-			//_Gpio_7_set;
+//			if(PWM_Start_Flag==1)
+//			{
+//				PWM_Start_Counter++;
+//				if(PWM_Start_Counter%9==0)
+//				{
+//					PWMX_OFF;
+//					PWMY_ON;
+//					PWMZ_OFF;
+//				}
+//				if(PWM_Start_Counter%17==0)
+//				{
+//					PWMX_OFF;
+//					PWMY_OFF;
+//					PWMZ_ON;
+//					PWM_Start_Counter  = 0;
+//					PWM_Start_Flag = 0;
+//				}
+//			}
 			TIM_ClearITPendingBit(TIM14, TIM_IT_Update);     //清除update事件中断标志
 		}
 }
@@ -529,7 +559,7 @@ void TIM16_Config(void)
 
 		nvic_init_structure.NVIC_IRQChannel = TIM14_IRQn;                //使能TIM14中断通道  
     nvic_init_structure.NVIC_IRQChannelCmd = ENABLE;                //使能TIM14中断  
-    nvic_init_structure.NVIC_IRQChannelPriority = 6;                //优先级为4
+    nvic_init_structure.NVIC_IRQChannelPriority = 1;                //优先级为4
     NVIC_Init(&nvic_init_structure); 	
 
     TIM_TimeBaseStructInit(&timer_init_structure);                  //初始化TIM结构体  

@@ -52,22 +52,26 @@
 
 #define PWM1_HIGH  	176
 #define PWM1_LOW  	0
-#define PWMx_HIGH  	1
+#define PWMx_HIGH  	12
 #define PWMx_LOW  	0
+#define PWMy_HIGH  	12
+#define PWMy_LOW  	0
+#define PWMz_HIGH  	12
+#define PWMz_LOW  	0
 
 
 /*PWM通道状态控制 宏定义*/
-#define PWM1_ON				TIM_SetCompare3(TIM2, PWM1_HIGH);					
+#define PWM1_ON				TIM_SetCompare3(TIM2,PWM1_HIGH);					
 #define PWM1_OFF			TIM_SetCompare3(TIM2,PWM1_LOW)
 
 #define PWMX_ON				TIM_SetCompare1(TIM1,PWMx_HIGH)
 #define PWMX_OFF			TIM_SetCompare1(TIM1,PWMx_LOW)
 
-#define PWMY_ON				TIM_SetCompare2(TIM1,PWMx_HIGH)
-#define PWMY_OFF			TIM_SetCompare2(TIM1,PWMx_LOW)
+#define PWMY_ON				TIM_SetCompare2(TIM1,PWMy_HIGH)
+#define PWMY_OFF			TIM_SetCompare2(TIM1,PWMy_LOW)
 
-#define PWMZ_ON				TIM_SetCompare3(TIM1,PWMx_HIGH)
-#define PWMZ_OFF			TIM_SetCompare3(TIM1,PWMx_LOW)
+#define PWMZ_ON				TIM_SetCompare3(TIM1,PWMz_HIGH)
+#define PWMZ_OFF			TIM_SetCompare3(TIM1,PWMz_LOW)
 
 #define SETPin				GPIO_ReadInputDataBit(SET_GPIO_Port,SET_Pin)
 
