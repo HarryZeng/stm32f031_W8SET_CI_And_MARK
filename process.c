@@ -175,10 +175,12 @@ extern int16_t  RunTime;
 void CI_GetRegisterAState(void)
 {
 	uint8_t GetADCIndex=0,k;
+	
 	if(sample_finish) /*DMA中断中，ADC转换完成标记*/
 	{
 		if(FB_Flag)  /*CI MODE*/
 		{
+			//TIM_SetCounter(TIM14,0x00);
 			for(GetADCIndex=0,k=0;k<4;k++)
 			{
 				SX[k] = selfADCValue[GetADCIndex++];
@@ -250,7 +252,7 @@ void CI_GetRegisterAState(void)
 			else if(SCI <= SCI_Min)
 				RegisterA = 0;
 			
-			RunTime = TIM_GetCounter(TIM14);
+			//RunTime = TIM_GetCounter(TIM14);
 			
 		}
 	}
